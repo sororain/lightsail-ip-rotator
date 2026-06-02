@@ -13,8 +13,8 @@ const config = {
   // Ping 检测时长（秒），默认 150
   pingTimeout: parseInt(process.env.PING_TIMEOUT || "150", 10),
 
-  // 检测间隔（分钟），默认 1
-  min: parseInt(process.env.CHECK_INTERVAL_MIN || "1", 10),
+  // 检测间隔（秒），默认 150
+  interval: parseInt(process.env.CHECK_INTERVAL_SEC || "150", 10),
 
   // Server酱 推送 Token（可选，留空不推送）
   serverChanToken: process.env.SERVER_CHAN_TOKEN || "",
@@ -40,7 +40,7 @@ function validateConfig() {
     errors.push("PING_TIMEOUT 不是有效的数字");
   }
   if (Number.isNaN(config.min) || config.min < 1) {
-    errors.push("CHECK_INTERVAL_MIN 必须大于 0");
+    errors.push("CHECK_INTERVAL_SEC 必须大于 0");
   }
 
   return errors;

@@ -11,7 +11,7 @@
 3. 如果 IP 不可达，自动执行更换流程：
    - **已有静态 IP** → 解绑旧 IP → 释放旧 IP → 分配新 IP → 绑定新 IP
    - **无静态 IP** → 直接分配新静态 IP → 绑定
-4. 每 1 分钟循环检测（可配置）
+4. 每 150 秒循环检测（可配置）
 
 ## 前置要求
 
@@ -50,7 +50,7 @@ cp .env.example .env
 | `AWS_SECRET_ACCESS_KEY` | 是 | - | AWS 秘密访问密钥 |
 | `AWS_REGIONS` | 否 | `ap-northeast-1` | AWS 区域，多个用逗号分隔 |
 | `PING_TIMEOUT` | 否 | `150` | Ping 检测时长（秒），持续发包，全丢才算不通 |
-| `CHECK_INTERVAL_MIN` | 否 | `1` | 检测间隔（分钟） |
+| `CHECK_INTERVAL_SEC` | 否 | `150` | 检测间隔（秒） |
 | `SERVER_CHAN_TOKEN` | 否 | - | Server酱 推送 Token |
 
 ## 运行
