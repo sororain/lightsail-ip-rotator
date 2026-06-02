@@ -1,9 +1,31 @@
-const ping = require("ping");
+const { exec } = require("child_process");
+const os = require("os");
 const config = require("./config");
 const { log } = require("./logger");
 
 /**
- * 检测指定主机 IP 连通性（60秒内持续 Ping，有一次回复即判定为通）
+ * 调用系统 ping 命令检测指定主机
+ * @param {string} host - 目标 IP 地址
+ * @param {number} timeout - 单次超时秒数
+ * @returns {Promise<{alive: boolean}>}
+ */
+function systemPing(host, timeout) {
+  return new Promise((resolve) => {
+    // 跨平台兼容
+    const isWin = os.platform() === "win32";
+    const cmd = isWin
+      ? `ping -n 1 -w ${timeout * 1000} ${host}`
+      : `ping -c 1 -W ${timeout} ${host}`;
+
+    exec(cmd, (error) => {
+      // error 非空表示 ping 不通（退出码非0）
+      resolve({ alive: !error });
+    });
+  });
+}
+
+/**
+ * 检测指定主机 IP 连通性（150秒内持续 Ping，有一次回复即判定为通）
  * @param {string} host - 目标 IP 地址
  * @param {Function} onReachable - IP 可达时的回调
  * @param {Function} onUnreachable - IP 不可达时的回调函数
@@ -15,10 +37,7 @@ async function checkConnectivity(host, onReachable, onUnreachable) {
     const deadline = Date.now() + config.pingTimeout * 1000;
 
     while (Date.now() < deadline) {
-      const result = await ping.promise.probe(host, {
-        timeout: 5,
-        extra: ["-c", "1"],
-      });
+      const result = await systemPing(host, 5);
 
       if (result.alive) {
         log("INFO", `${host} Ping 通，跳过本轮检测`);
