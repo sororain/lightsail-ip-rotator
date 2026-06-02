@@ -10,8 +10,8 @@ const config = {
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
   },
 
-  // IP 连通性检测端口，默认 22 (SSH)
-  port: parseInt(process.env.CHECK_PORT || "22", 10),
+  // Ping 超时时间（秒），默认 5
+  pingTimeout: parseInt(process.env.PING_TIMEOUT || "5", 10),
 
   // 检测间隔（分钟），默认 1
   min: parseInt(process.env.CHECK_INTERVAL_MIN || "1", 10),
@@ -36,8 +36,8 @@ function validateConfig() {
   if (config.regions.length === 0 || !config.regions[0]) {
     errors.push("AWS_REGIONS 未设置或格式不正确");
   }
-  if (Number.isNaN(config.port) || config.port < 1 || config.port > 65535) {
-    errors.push("CHECK_PORT 不是有效的端口号 (1-65535)");
+  if (Number.isNaN(config.pingTimeout) || config.pingTimeout < 1) {
+    errors.push("PING_TIMEOUT 不是有效的数字");
   }
   if (Number.isNaN(config.min) || config.min < 1) {
     errors.push("CHECK_INTERVAL_MIN 必须大于 0");
