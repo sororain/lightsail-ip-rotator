@@ -88,8 +88,8 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
 AWS_REGIONS=ap-northeast-1
 
 # IP 检测配置
-CHECK_PORT=22
-CHECK_INTERVAL_MIN=60
+PING_TIMEOUT=60
+CHECK_INTERVAL_MIN=1
 
 # Server酱 通知（可选）
 SERVER_CHAN_TOKEN=your_token

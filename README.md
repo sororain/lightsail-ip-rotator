@@ -7,7 +7,7 @@
 ## 工作原理
 
 1. 获取所有 Lightsail 实例列表
-2. 对每个实例的 IP 进行持续 Ping 检测（5 秒内发 10 个包，有任一回复即视为可达）
+2. 对每个实例的 IP 进行持续 Ping 检测（60 秒内发 60 个包，有任一回复即视为可达）
 3. 如果 IP 不可达，自动执行更换流程：
    - **已有静态 IP** → 解绑旧 IP → 释放旧 IP → 分配新 IP → 绑定新 IP
    - **无静态 IP** → 直接分配新静态 IP → 绑定
@@ -49,7 +49,7 @@ cp .env.example .env
 | `AWS_ACCESS_KEY_ID` | 是 | - | AWS 访问密钥 ID |
 | `AWS_SECRET_ACCESS_KEY` | 是 | - | AWS 秘密访问密钥 |
 | `AWS_REGIONS` | 否 | `ap-northeast-1` | AWS 区域，多个用逗号分隔 |
-| `PING_TIMEOUT` | 否 | `5` | Ping 检测时长（秒），持续发包，全丢才算不通 |
+| `PING_TIMEOUT` | 否 | `60` | Ping 检测时长（秒），持续发包，全丢才算不通 |
 | `CHECK_INTERVAL_MIN` | 否 | `1` | 检测间隔（分钟） |
 | `SERVER_CHAN_TOKEN` | 否 | - | Server酱 推送 Token |
 
