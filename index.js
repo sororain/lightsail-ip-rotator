@@ -1,185 +1,200 @@
 const {
-  LightsailClient,
-  GetInstancesCommand,
-  AttachStaticIpCommand, //绑定静态ip
-  DetachStaticIpCommand, //解绑静态ip
-  ReleaseStaticIpCommand, //删除静态ip
-  GetStaticIpsCommand, //获取区域所有静态ip列表
-  AllocateStaticIpCommand, //创建静态ip
-} = require("@aws-sdk/client-lightsail");
+  clients,
+  fetchInstances,
+  fetchStaticIps,
+  detachStaticIp,
+  releaseStaticIp,
+  allocateStaticIp,
+  attachStaticIp,
+} = require("./lightsail");
+const { checkConnectivity } = require("./checker");
+const { sendMsgByServerChan } = require("./notifier");
+const { log } = require("./logger");
+const config = require("./config");
 
-const net = require("net");
-const axios = require("axios").default;
-//region
-// US East (Ohio) (us-east-2)
-// US East (N. Virginia) (us-east-1)
-// US West (Oregon) (us-west-2)
-// Asia Pacific (Mumbai) (ap-south-1)
-// Asia Pacific (Seoul) (ap-northeast-2)
-// Asia Pacific (Singapore) (ap-southeast-1)
-// Asia Pacific (Sydney) (ap-southeast-2)
-// Asia Pacific (Tokyo) (ap-northeast-1)
-// Canada (Central) (ca-central-1)
-// EU (Frankfurt) (eu-central-1)
-// EU (Ireland) (eu-west-1)
-// EU (London) (eu-west-2)
-// EU (Paris) (eu-west-3)
-// EU (Stockholm) (eu-north-1)
+// ============================================================
+// 业务流程编排
+// ============================================================
 
-const regions = ["ap-northeast-1"];
-const credentials = {
-  accessKeyId: "",
-  secretAccessKey: "",
-};
-const clients = [];
-regions.map((region) => {
-  clients.push(
-    new LightsailClient({
-      region,
-      credentials,
+/**
+ * 获取所有 Lightsail 实例并逐个检查 IP 连通性
+ */
+async function getInstances() {
+  log("INFO", "开始新一轮 IP 检查");
+
+  // 并发获取所有区域的实例列表
+  const results = await Promise.allSettled(
+    clients.map(async (client) => {
+      const servers = await fetchInstances(client);
+      return { client, servers };
     })
   );
-});
-const min = 60; //间隔分钟数,默认60
-const port = 22; //ip连通性检查端口，默认22
-const serverChanToken = "";
 
-function getInstances() {
-  console.log("获取服务器列表中");
-  const command = new GetInstancesCommand({});
-  clients.map(async (client) => {
-    const response = await client.send(command);
+  const allChecks = [];
 
-    const servers = response.instances;
-    // console.log(servers);
-    if (Array.isArray(servers)) {
-      servers.map((server) => {
-        // getStaticIp(client);
-        checkIp(client, server);
-      });
-    }
-  });
-}
-async function checkIp(client, server) {
-  // isStaticIp 是否是静态ip publicIpAddress 公共ip
-  console.log("正在检查ip连通性");
-
-  const host = server.publicIpAddress;
-  const netClient = net.createConnection(
-    {
-      port, // 端口
-      host, // 服务地址，默认localhost
-    },
-    () => {
-      console.log(`${host}可连接，无需变更`);
-      netClient.destroy();
-    }
-  );
-  netClient.setTimeout(3000); //设置3s超时时长
-  netClient.on("timeout", (err) => {
-    //设定时间后超时直接认为ip阻断
-    netClient.destroy();
-    if (server.isStaticIp) {
-      getStaticIp(client, server);
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      const { client, servers } = result.value;
+      for (const server of servers) {
+        allChecks.push(checkIp(client, server));
+      }
     } else {
-      allocateStaticIp(client, server);
-      //
+      log("ERROR", `获取实例列表失败: ${result.reason.message}`);
     }
-  });
-  netClient.on("error", (err) => {
-    console.log(`${host}连接超时`);
-    // netClient.destroyed();
-    if (server.isStaticIp) {
-      getStaticIp(client, server);
-    } else {
-      allocateStaticIp(client, server);
-      //
-    }
-    // attachStaticIp(client, server);
-  });
-}
-async function getStaticIp(client, server) {
-  console.log("正在获取区域所有静态ip列表");
-  const command = new GetStaticIpsCommand({});
-  const response = await client.send(command);
-  const staticIps = response.staticIps;
-  console.log("获取区域所有静态ip列表成功");
-  if (Array.isArray(staticIps)) {
-    const activeStaticIpItem = staticIps.find((item) => {
-      return item.ipAddress === server.publicIpAddress;
-    });
-    detachStaticIp(client, activeStaticIpItem);
   }
+
+  // 等待所有检测完成并输出汇总
+  const checkResults = await Promise.allSettled(allChecks);
+  const stats = { reachable: 0, changed: 0, failed: 0 };
+
+  for (const r of checkResults) {
+    if (r.status === "fulfilled") {
+      stats[r.value.status]++;
+    } else {
+      stats.failed++;
+    }
+  }
+
+  log("INFO", `本轮检查完成: ${stats.reachable} 个可达, ${stats.changed} 个已更换, ${stats.failed} 个失败`);
 }
-async function detachStaticIp(client, activeStaticIpItem) {
-  console.log(
-    `正在解绑静态ip:${activeStaticIpItem.name} ${activeStaticIpItem.ipAddress}`
+
+/**
+ * 检测指定实例 IP 连通性，不可达时自动更换
+ */
+/**
+ * 检测指定实例 IP 连通性，不可达时自动更换
+ * @returns {Promise<{server: object, status: string}>}
+ */
+async function checkIp(client, server) {
+  return new Promise((resolve) => {
+    const host = server.publicIpAddress;
+    log("INFO", `正在检查 ${server.name} (${host}) 连通性`);
+
+    checkConnectivity(
+      host,
+      // 可达
+      () => resolve({ server, status: "reachable" }),
+      // 不可达
+      async () => {
+        log("INFO", `${server.name} (${host}) IP不可达，开始更换`);
+        try {
+          if (server.isStaticIp) {
+            await rotateStaticIp(client, server);
+          } else {
+            await allocateAndAttach(client, server);
+          }
+          resolve({ server, status: "changed" });
+        } catch (err) {
+          log("ERROR", `${host} IP更换失败: ${err.message}`);
+          resolve({ server, status: "failed" });
+        }
+      }
+    );
+  });
+}
+
+/**
+ * 处理已有静态 IP 的实例：解绑旧 IP → 释放旧 IP → 分配新 IP → 绑定新 IP
+ */
+async function rotateStaticIp(client, server) {
+  log("INFO", "正在获取区域所有静态 IP 列表");
+  const staticIps = await fetchStaticIps(client);
+  log("INFO", "获取区域所有静态 IP 列表成功");
+
+  const oldIp = server.publicIpAddress;
+  const activeStaticIpItem = staticIps.find(
+    (item) => item.ipAddress === oldIp
   );
-  const command = new DetachStaticIpCommand({
-    staticIpName: activeStaticIpItem.name,
-  });
-  await client.send(command);
-  console.log(`解绑成功`);
-  releaseStaticIp(client, activeStaticIpItem);
+
+  if (activeStaticIpItem) {
+    log("INFO", `正在解绑静态 IP: ${activeStaticIpItem.name} (${activeStaticIpItem.ipAddress})`);
+    await detachStaticIp(client, activeStaticIpItem.name);
+    log("INFO", "解绑成功");
+
+    log("INFO", `正在释放静态 IP: ${activeStaticIpItem.name} (${activeStaticIpItem.ipAddress})`);
+    await releaseStaticIp(client, activeStaticIpItem.name);
+    log("INFO", "释放静态 IP 成功");
+  } else {
+    log("INFO", `${oldIp} 未找到对应静态 IP，直接分配新 IP`);
+  }
+
+  await allocateAndAttach(client, server);
 }
-async function releaseStaticIp(client, staticIpItem) {
-  console.log(`正在删除静态ip:${staticIpItem.name} ${staticIpItem.ipAddress}`);
-  const command = new ReleaseStaticIpCommand({
-    staticIpName: staticIpItem.name,
-  });
-  await client.send(command);
-  console.log("删除静态ip成功");
-}
-async function allocateStaticIp(client, server) {
-  console.log(`正在创建新的静态ip`);
-  const staticIpName = `StaticIp-${Math.random()}`;
-  const command = new AllocateStaticIpCommand({ staticIpName });
-  await client.send(command);
-  console.log("创建静态ip成功！");
-  server.newStaticIpName = staticIpName;
-  attachStaticIp(client, server);
-}
-//绑定静态ip
-async function attachStaticIp(client, server) {
-  console.log(
-    `正在把新静态ip${server.newStaticIpName}绑定到实例${server.name}`
-  );
-  const command = new AttachStaticIpCommand({
-    instanceName: server.name,
-    staticIpName: server.newStaticIpName,
-  });
-  await client.send(command);
-  sendMsgByServerChan();
-  console.log("绑定新ip成功！");
-}
-async function sendMsgByServerChan() {
-   if (!serverChanToken) {
+
+/**
+ * 分配新静态 IP 并绑定到实例
+ */
+async function allocateAndAttach(client, server) {
+  const oldIp = server.publicIpAddress;
+  const staticIpName = `${server.name}-${Date.now()}`;
+
+  log("INFO", `正在创建新的静态 IP`);
+  try {
+    await allocateStaticIp(client, staticIpName);
+  } catch (err) {
+    log("ERROR", `创建静态 IP 失败: ${err.message}`);
     return;
   }
-  request({
-    method: "POST",
-    url: `https://sctapi.ftqq.com/${serverChanToken}.send`,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    data: {
-      title: "AWS lightSail IP更换通知",
-      desp: `AWS lightSail IP已更换成功`,
-    },
+  log("INFO", "创建静态 IP 成功！");
+
+  log("INFO", `正在绑定静态 IP ${staticIpName} 到实例 ${server.name}`);
+  try {
+    await attachStaticIp(client, server.name, staticIpName);
+  } catch (err) {
+    log("ERROR", `绑定静态 IP 失败: ${err.message}`);
+    return;
+  }
+
+  log("INFO", "绑定新 IP 成功！");
+  await sendMsgByServerChan({
+    instanceName: server.name,
+    region: server.location?.regionName || "未知",
+    oldIp,
+    newIp: staticIpName,
   });
 }
-function request(options) {
-  return axios
-    .request(options)
-    .then(function (response) {
-      return response.data;
-    })
-    .catch(function (error) {
-      return error;
-    });
+
+// ============================================================
+// 启动校验
+// ============================================================
+
+const configErrors = config.validateConfig();
+if (configErrors.length > 0) {
+  log("ERROR", "配置校验失败:");
+  configErrors.forEach((err) => log("ERROR", `  - ${err}`));
+  log("ERROR", "请检查 .env 文件或环境变量后重试");
+  process.exit(1);
 }
+
+// ============================================================
+// 优雅退出
+// ============================================================
+
+let shuttingDown = false;
+
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  log("INFO", `收到 ${signal} 信号，正在停止...`);
+  clearInterval(timer);
+
+  // 等待进行中的操作完成后退出
+  setTimeout(() => {
+    log("INFO", "程序已退出");
+    process.exit(0);
+  }, 5000).unref();
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+// ============================================================
+// 启动
+// ============================================================
+
+log("INFO", `lightsail-ip-rotator 启动，检测间隔: ${config.min} 分钟`);
 getInstances();
-clearInterval(timer);
-var timer = setInterval(() => {
+const timer = setInterval(() => {
   getInstances();
-}, min * 60 * 1000);
+}, config.min * 60 * 1000);
