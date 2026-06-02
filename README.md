@@ -15,7 +15,7 @@
 
 ## 前置要求
 
-- Node.js 16+
+- Node.js 20 LTS+
 - AWS 账号及 [IAM 访问密钥](https://console.aws.amazon.com/iam/home?region=ap-northeast-1#/security_credentials)
 - pm2（推荐生产使用）
 
