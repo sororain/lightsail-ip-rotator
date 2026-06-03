@@ -16,7 +16,7 @@
     "type": "git",
     "url": "https://github.com/sororain/lightsail-ip-rotator.git"
   },
-  "author": "sola.zhang",
+  "author": "sororain",
   "license": "GPL-3.0",
   "devDependencies": {
     "nodemon": "2.0.20"
