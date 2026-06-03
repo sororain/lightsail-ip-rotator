@@ -72,6 +72,32 @@ pm2 restart lightsail  # 重启
 pm2 stop lightsail     # 停止
 ```
 
+## 日志
+
+所有日志统一写入项目根目录的 `lightsail.log` 文件，同时输出到控制台。
+
+### 日志级别
+
+| 级别 | 用途 | 筛选命令 |
+|------|------|----------|
+| `INFO` | 正常流程信息（检测开始、操作成功、汇总报告等） | `grep "\[INFO\]" lightsail.log` |
+| `WARN` | 警告（Ping 不通、AWS 限流重试等） | `grep "\[WARN\]" lightsail.log` |
+| `CHANGE` | IP 更换事件（记录实例名和 IP 变更） | `grep "\[CHANGE\]" lightsail.log` |
+| `ERROR` | 异常错误（API 调用失败等） | `grep "\[ERROR\]" lightsail.log` |
+
+### 日志示例
+
+```
+[2026/6/3 12:00:00] [INFO] lightsail-ip-rotator 启动，检测间隔: 150 秒
+[2026/6/3 12:00:00] [INFO] 开始新一轮 IP 检查
+[2026/6/3 12:00:01] [INFO] 正在持续 Ping 1.2.3.4（最长 150 秒）
+[2026/6/3 12:00:02] [INFO] 1.2.3.4 Ping 通，跳过本轮检测
+[2026/6/3 12:02:30] [WARN] 5.6.7.8 持续 150 秒 Ping 无回复，判定为不通
+[2026/6/3 12:02:31] [INFO] 正在解绑静态 IP: StaticIp-xxx (5.6.7.8)
+[2026/6/3 12:02:33] [CHANGE] my-instance IP已更换 5.6.7.8 → 9.10.11.12
+[2026/6/3 12:02:34] [INFO] 本轮检查完成: 1 个可达, 1 个已更换, 0 个失败
+```
+
 ## 项目结构
 
 ```
