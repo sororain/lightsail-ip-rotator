@@ -89,7 +89,7 @@ AWS_REGIONS=ap-northeast-1
 
 # IP 检测配置
 PING_TIMEOUT=150
-CHECK_INTERVAL_SEC=150
+CHECK_INTERVAL_MIN=5
 
 # Server酱 通知（可选）
 SERVER_CHAN_TOKEN=your_token

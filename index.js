@@ -193,8 +193,8 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 // 启动
 // ============================================================
 
-log("INFO", `lightsail-ip-rotator 启动，检测间隔: ${config.interval} 秒`);
+log("INFO", `lightsail-ip-rotator 启动，检测间隔: ${config.interval} 分钟`);
 getInstances();
 const timer = setInterval(() => {
   getInstances();
-}, config.interval * 1000);
+}, config.interval * 60 * 1000);
