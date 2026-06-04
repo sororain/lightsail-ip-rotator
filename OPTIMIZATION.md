@@ -2,7 +2,7 @@
 
 ## 📁 代码结构
 
-### 1. 拆分模块
+### 1. 拆分模块  ✅ 已完成
 将 `index.js` 拆分为以下模块，避免单文件过于臃肿：
 
 | 文件 | 职责 |
@@ -13,7 +13,7 @@
 | `notifier.js` | 消息通知（Server酱等） |
 | `index.js` | 入口文件，组织调度逻辑 |
 
-### 2. 引入 `.env` 配置管理
+### 2. 引入 `.env` 配置管理  ✅ 已完成
 - 使用 `dotenv` 包管理环境变量
 - 创建 `.env.example` 文件列出所有配置项
 - 不再在源码中直接引用 `process.env`
@@ -22,20 +22,23 @@
 
 ## 🛡 健壮性
 
-### 3. `detachStaticIp` 缺少 try/catch
+### 3. `detachStaticIp` 缺少 try/catch  ✅ 已修复
 解绑静态 IP 时如果 AWS API 调用失败（如 IP 已被其他实例占用），会导致整个流程崩溃。需要增加错误处理。
+- 已在 `index.js` 编排层增加 try/catch，失败时记录日志
 
-### 4. `releaseStaticIp` 缺少 try/catch
+### 4. `releaseStaticIp` 缺少 try/catch  ✅ 已修复
 释放静态 IP 时同样缺少错误处理，应统一增加 try/catch 并记录错误日志。
+- 已在 `index.js` 编排层增加 try/catch
 
-### 5. TCP 连接超时后资源清理
+### 5. TCP 连接超时后资源清理  ✅ 已修复
 `netClient.destroy()` 后应调用 `netClient.unref()`，确保 TCP socket 不会阻止 Node.js 进程退出。
+- 已改用系统 Ping 命令，不再使用 TCP 连接
 
 ---
 
 ## 🚀 功能增强
 
-### 6. 优雅退出
+### 6. 优雅退出  ✅ 已完成
 监听 `SIGINT` / `SIGTERM` 信号，在程序退出前：
 - 等待正在进行的 IP 更换操作完成
 - 关闭定时器
@@ -50,17 +53,17 @@ process.on("SIGINT", async () => {
 });
 ```
 
-### 7. 更换成功通知增强
+### 7. 更换成功通知增强  ✅ 已完成
 Server酱 通知内容应包含更多有用信息：
 - 实例名称
 - 旧 IP 地址
 - 新 IP 地址
 - 更换时间
 
-### 8. 并发 TCP 检测
+### 8. 并发 TCP 检测  ✅ 已完成
 当前多个实例的 TCP 检测是串行执行的，可以使用 `Promise.allSettled()` 并行检测所有实例的 IP，提高效率。
 
-### 9. 更换记录日志
+### 9. 更换记录日志  ✅ 已完成
 将每次 IP 更换记录到文件（如 `history.log`），包含：
 - 时间戳
 - 实例名称/区域
@@ -71,14 +74,14 @@ Server酱 通知内容应包含更多有用信息：
 
 ## 📝 文档
 
-### 10. 更新 README
+### 10. 更新 README  ✅ 已完成
 当前 README 还是旧版本的说明，需要更新为：
 - 新的项目名称和仓库地址
 - 环境变量配置方式
 - 安装和使用步骤
 - 运行原理说明
 
-### 11. 添加 `.env.example`
+### 11. 添加 `.env.example`  ✅ 已完成
 ```env
 # AWS 凭证
 AWS_ACCESS_KEY_ID=your_access_key
@@ -99,7 +102,7 @@ SERVER_CHAN_TOKEN=your_token
 
 ## 🎯 小优化
 
-### 12. IP 名称可读性增强
+### 12. IP 名称可读性增强  ✅ 已完成
 当前静态 IP 名称格式：
 ```
 StaticIp-${crypto.randomUUID()}-${Date.now()}
@@ -109,8 +112,9 @@ StaticIp-${crypto.randomUUID()}-${Date.now()}
 ${server.name}-${Date.now()}
 ```
 
-### 13. `request()` 函数风格统一
+### 13. `request()` 函数风格统一  ✅ 已完成
 将 `.then()/.catch()` 的 Promise 链改为统一的 `async/await` 风格，保持代码一致性。
 
-### 14. 端口可基于实例配置
-不同实例可能需要检测不同端口（SSH=22, RDP=3389, HTTP=80），可以通过实例 Tag 或额外配置来实现按实例指定检测端口。
+### 14. 按实例配置端口  🔒 已弃用
+~~不同实例可能需要检测不同端口（SSH=22, RDP=3389, HTTP=80）~~
+现已改用 Ping 检测，不依赖端口，此项不再需要。
