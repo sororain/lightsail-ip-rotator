@@ -93,6 +93,33 @@ async function attachStaticIp(client, instanceName, staticIpName) {
   }, `绑定静态 IP ${staticIpName} 到 ${instanceName}`);
 }
 
+/**
+ * 清理所有未附加的静态 IP
+ */
+async function cleanupUnattachedIps(client) {
+  const staticIps = await fetchStaticIps(client);
+  let cleaned = 0;
+
+  for (const ip of staticIps) {
+    if (!ip.isAttached) {
+      log("WARN", `发现未附加静态 IP: ${ip.name} (${ip.ipAddress})，正在释放`);
+      try {
+        await releaseStaticIp(client, ip.name);
+        log("INFO", `已释放未附加静态 IP: ${ip.name}`);
+        cleaned++;
+      } catch (err) {
+        log("ERROR", `释放未附加静态 IP ${ip.name} 失败: ${err.message}`);
+      }
+    }
+  }
+
+  if (cleaned > 0) {
+    log("INFO", `本轮清理完成，共释放 ${cleaned} 个未附加静态 IP`);
+  }
+
+  return cleaned;
+}
+
 module.exports = {
   clients,
   fetchInstances,
@@ -101,4 +128,5 @@ module.exports = {
   releaseStaticIp,
   allocateStaticIp,
   attachStaticIp,
+  cleanupUnattachedIps,
 };

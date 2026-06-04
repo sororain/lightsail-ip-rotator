@@ -6,6 +6,7 @@ const {
   releaseStaticIp,
   allocateStaticIp,
   attachStaticIp,
+  cleanupUnattachedIps,
 } = require("./lightsail");
 const { checkConnectivity } = require("./checker");
 const { sendMsgByServerChan } = require("./notifier");
@@ -194,7 +195,22 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 // ============================================================
 
 log("INFO", `lightsail-ip-rotator 启动，检测间隔: ${config.interval} 分钟`);
+
+// 启动时先清理一次未附加静态 IP
+log("INFO", "正在检查未附加的静态 IP...");
+for (const client of clients) {
+  cleanupUnattachedIps(client);
+}
+
 getInstances();
 const timer = setInterval(() => {
   getInstances();
 }, config.interval * 60 * 1000);
+
+// 每 30 分钟清理一次未附加静态 IP
+setInterval(() => {
+  log("INFO", "开始检查未附加静态 IP");
+  for (const client of clients) {
+    cleanupUnattachedIps(client);
+  }
+}, 30 * 60 * 1000);
