@@ -10,8 +10,8 @@ const config = {
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
   },
 
-  // Ping 检测时长（秒），默认 30
-  pingTimeout: parseInt(process.env.PING_TIMEOUT || "30", 10),
+  // Ping 检测时长（秒），默认 15
+  pingTimeout: parseInt(process.env.PING_TIMEOUT || "15", 10),
 
   // 检测间隔（分钟），默认 1
   interval: parseFloat(process.env.CHECK_INTERVAL_MIN || "1"),

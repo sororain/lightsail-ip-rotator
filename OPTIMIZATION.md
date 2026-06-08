@@ -91,7 +91,7 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
 AWS_REGIONS=ap-northeast-1
 
 # IP 检测配置
-PING_TIMEOUT=30
+PING_TIMEOUT=15
 CHECK_INTERVAL_MIN=1
 
 # Server酱 通知（可选）
