@@ -10,11 +10,11 @@ const config = {
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
   },
 
-  // Ping 检测时长（秒），默认 60
-  pingTimeout: parseInt(process.env.PING_TIMEOUT || "60", 10),
+  // Ping 检测时长（秒），默认 30
+  pingTimeout: parseInt(process.env.PING_TIMEOUT || "30", 10),
 
-  // 检测间隔（分钟），默认 5
-  interval: parseFloat(process.env.CHECK_INTERVAL_MIN || "5"),
+  // 检测间隔（分钟），默认 1
+  interval: parseFloat(process.env.CHECK_INTERVAL_MIN || "1"),
 
   // Server酱 推送 Token（可选，留空不推送）
   serverChanToken: process.env.SERVER_CHAN_TOKEN || "",
