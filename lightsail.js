@@ -97,7 +97,14 @@ async function attachStaticIp(client, instanceName, staticIpName) {
  * 清理所有未附加的静态 IP
  */
 async function cleanupUnattachedIps(client) {
-  const staticIps = await fetchStaticIps(client);
+  let staticIps;
+  try {
+    staticIps = await fetchStaticIps(client);
+  } catch (err) {
+    log("ERROR", `获取静态 IP 列表失败，跳过清理: ${err.message}`);
+    return 0;
+  }
+
   let cleaned = 0;
 
   for (const ip of staticIps) {

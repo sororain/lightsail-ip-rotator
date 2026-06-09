@@ -194,23 +194,35 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 // 启动
 // ============================================================
 
-log("INFO", `lightsail-ip-rotator 启动，检测间隔: ${config.interval} 分钟`);
+async function main() {
+  log("INFO", `lightsail-ip-rotator 启动，检测间隔: ${config.interval} 分钟`);
 
-// 启动时先清理一次未附加静态 IP
-log("INFO", "正在检查未附加的静态 IP...");
-for (const client of clients) {
-  cleanupUnattachedIps(client);
+  // 启动时先清理一次未附加静态 IP
+  log("INFO", "正在检查未附加的静态 IP...");
+  for (const client of clients) {
+    try {
+      await cleanupUnattachedIps(client);
+    } catch (err) {
+      log("ERROR", `清理未附加 IP 异常: ${err.message}`);
+    }
+  }
+
+  getInstances();
+  const timer = setInterval(() => {
+    getInstances();
+  }, config.interval * 60 * 1000);
+
+  // 每 30 分钟清理一次未附加静态 IP
+  setInterval(async () => {
+    log("INFO", "开始检查未附加静态 IP");
+    for (const client of clients) {
+      try {
+        await cleanupUnattachedIps(client);
+      } catch (err) {
+        log("ERROR", `清理未附加 IP 异常: ${err.message}`);
+      }
+    }
+  }, 30 * 60 * 1000);
 }
 
-getInstances();
-const timer = setInterval(() => {
-  getInstances();
-}, config.interval * 60 * 1000);
-
-// 每 30 分钟清理一次未附加静态 IP
-setInterval(() => {
-  log("INFO", "开始检查未附加静态 IP");
-  for (const client of clients) {
-    cleanupUnattachedIps(client);
-  }
-}, 30 * 60 * 1000);
+main();
