@@ -172,6 +172,7 @@ if (configErrors.length > 0) {
 // ============================================================
 
 let shuttingDown = false;
+let timer;
 
 function shutdown(signal) {
   if (shuttingDown) return;
@@ -208,7 +209,7 @@ async function main() {
   }
 
   getInstances();
-  const timer = setInterval(() => {
+  timer = setInterval(() => {
     getInstances();
   }, config.interval * 60 * 1000);
 
