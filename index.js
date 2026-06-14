@@ -147,11 +147,24 @@ async function allocateAndAttach(client, server) {
   }
 
   log("INFO", "绑定新 IP 成功！");
+
+  // 获取新 IP 的实际地址
+  let newIp = staticIpName;
+  try {
+    const ips = await fetchStaticIps(client);
+    const matched = ips.find((ip) => ip.name === staticIpName);
+    if (matched && matched.ipAddress) {
+      newIp = matched.ipAddress;
+    }
+  } catch (err) {
+    log("WARN", `获取新 IP 地址失败，使用名称代替: ${err.message}`);
+  }
+
   await sendMsgByServerChan({
     instanceName: server.name,
     region: server.location?.regionName || "未知",
     oldIp,
-    newIp: staticIpName,
+    newIp,
   });
 }
 
