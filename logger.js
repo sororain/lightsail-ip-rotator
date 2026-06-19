@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const LOG_FILE = path.join(__dirname, "lightsail.log");
+const CHANGE_LOG = path.join(__dirname, "changes.log");
 
 // ANSI 颜色代码
 const colors = {
@@ -22,13 +23,20 @@ function log(level, message) {
   const line = `[${timestamp}] [${level}] ${message}`;
   const color = colors[level] || "";
 
-  // 控制台输出：仅标签带颜色
+  // 控制台输出：带颜色的标签
   console.log(`[${timestamp}] ${color}[${level}]${colors.RESET} ${message}`);
 
   // 文件写入纯文本（不带颜色）
-  fs.appendFile(LOG_FILE, line + "\n", (err) => {
+  fs.appendFile(LOG_FILE, `${line}\n`, (err) => {
     if (err) console.error(`${colors.ERROR}写入日志文件失败: ${err.message}${colors.RESET}`);
   });
+
+  // 更换事件单独记一份到 changes.log
+  if (level === "CHANGE") {
+    fs.appendFile(CHANGE_LOG, `${line}\n`, (err) => {
+      if (err) console.error(`${colors.ERROR}写入更换日志失败: ${err.message}${colors.RESET}`);
+    });
+  }
 }
 
 module.exports = { log };
